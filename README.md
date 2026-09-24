@@ -7,6 +7,10 @@ A modern virtual student-card mobile application, built with Flutter.
 - Flutter and Dartlang
 - Supabase
 
+## Screens
+
+![Mobile Screen](mobile_design.png)
+
 ## Getting Started
 
 ```bash
