@@ -10,7 +10,6 @@ class HomePage extends StatelessWidget {
     return Scaffold(
       body: Column(
         children: [
-          // hero
           Container(
             height: 300,
             width: double.infinity,
@@ -20,7 +19,6 @@ class HomePage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // app name + logout
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -31,7 +29,6 @@ class HomePage extends StatelessWidget {
                         ).textTheme.bodyMedium?.copyWith(color: Colors.white),
                       ),
                       IconButton(
-                        // ✅ FIXED: Logout goes back to LoginPage
                         onPressed: () {
                           Navigator.pushReplacement(
                             context,
@@ -46,7 +43,6 @@ class HomePage extends StatelessWidget {
                   ),
                   const SizedBox(height: 30),
 
-                  // greet user
                   Text(
                     'Hello, Tshepiso',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -56,7 +52,6 @@ class HomePage extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
 
-                  // welcome message
                   Text(
                     'Welcome to your student digital access system',
                     style: Theme.of(
@@ -69,7 +64,6 @@ class HomePage extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // navigation buttons
           Expanded(
             child: GridView.count(
               crossAxisCount: 2,
@@ -77,7 +71,6 @@ class HomePage extends StatelessWidget {
               mainAxisSpacing: 10,
               padding: const EdgeInsets.symmetric(horizontal: 15),
               children: [
-                // --- REGISTER STUDENT CARD (FIXED) ---
                 _buildGridButton(
                   context,
                   iconColor: Colors.blue[900]!,
@@ -93,48 +86,36 @@ class HomePage extends StatelessWidget {
                   },
                 ),
 
-                // --- VIEW MY CARD ---
                 _buildGridButton(
                   context,
                   iconColor: Colors.amber[700]!,
                   icon: Icons.credit_card_rounded,
                   label: 'View My Card',
-                  onTap: () {
-                    // TODO: navigate to card screen
-                  },
+                  onTap: () {},
                 ),
 
-                // --- MY DETAILS ---
                 _buildGridButton(
                   context,
                   iconColor: Colors.lightBlue[700]!,
                   icon: Icons.person_outline,
                   label: 'My Details',
-                  onTap: () {
-                    // TODO: navigate to details screen
-                  },
+                  onTap: () {},
                 ),
 
-                // --- HELP & SUPPORT ---
                 _buildGridButton(
                   context,
                   iconColor: Colors.red[900]!,
                   icon: Icons.question_mark,
                   label: 'Help & Support',
-                  onTap: () {
-                    // TODO: navigate to help screen
-                  },
+                  onTap: () {},
                 ),
 
-                // --- STATUS ---
                 _buildGridButton(
                   context,
                   iconColor: Colors.green[700]!,
                   icon: Icons.info_outlined,
                   label: 'Status',
-                  onTap: () {
-                    // TODO: navigate to status screen
-                  },
+                  onTap: () {},
                 ),
               ],
             ),
@@ -145,7 +126,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // Helper widget to avoid repeating the same container code 5 times
   Widget _buildGridButton(
     BuildContext context, {
     required Color iconColor,

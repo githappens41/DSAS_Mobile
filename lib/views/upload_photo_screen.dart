@@ -36,6 +36,7 @@ class UploadPhotoScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
+                          color: Colors.black,
                         ),
                       ),
                     ),
@@ -48,17 +49,18 @@ class UploadPhotoScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 32),
-                    _buildBox("+Take/upload photo"),
+                    _buildUploadBox("+Take/upload photo"),
                     const SizedBox(height: 24),
                     const Text(
                       "Proof of registration",
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
+                        color: Colors.black87,
                       ),
                     ),
                     const SizedBox(height: 12),
-                    _buildBox("+Take/upload photo"),
+                    _buildUploadBox("+Take/upload photo"),
                   ],
                 ),
               ),
@@ -69,12 +71,16 @@ class UploadPhotoScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ViewStatusScreen()),
-                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ViewStatusScreen(),
+                      ),
+                    );
+                  },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4C1D95),
+                    backgroundColor: Colors.blue[900],
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -82,7 +88,7 @@ class UploadPhotoScreen extends StatelessWidget {
                   ),
                   child: const Text(
                     "Submit registration",
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: Colors.white, fontSize: 14),
                   ),
                 ),
               ),
@@ -93,7 +99,7 @@ class UploadPhotoScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBox(String text) {
+  Widget _buildUploadBox(String text) {
     return Container(
       height: 140,
       width: double.infinity,
@@ -107,6 +113,7 @@ class UploadPhotoScreen extends StatelessWidget {
           style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w500,
+            fontSize: 13,
           ),
         ),
       ),
