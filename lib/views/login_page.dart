@@ -42,9 +42,10 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               SizedBox(height: 55),
               // cut emblem
-              Image.network(
-                'https://www.cut.ac.za/Images/Site/placeholder_image.png',
+              Image.asset(
+                'assets/images/cut_emblem.jpeg',
                 width: 150,
+                fit: BoxFit.cover,
               ),
               SizedBox(height: 30),
 

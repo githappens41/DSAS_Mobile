@@ -1,3 +1,6 @@
+import 'package:dsas_app/views/active_card_screen.dart';
+import 'package:dsas_app/views/help_support_screen.dart';
+import 'package:dsas_app/views/view_status_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:dsas_app/views/login_page.dart';
 import 'package:dsas_app/views/register_student_card_screen.dart';
@@ -91,7 +94,14 @@ class HomePage extends StatelessWidget {
                   iconColor: Colors.amber[700]!,
                   icon: Icons.credit_card_rounded,
                   label: 'View My Card',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ActiveCardScreen(),
+                      ),
+                    );
+                  },
                 ),
 
                 _buildGridButton(
@@ -107,7 +117,14 @@ class HomePage extends StatelessWidget {
                   iconColor: Colors.red[900]!,
                   icon: Icons.question_mark,
                   label: 'Help & Support',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const HelpSupportScreen(),
+                      ),
+                    );
+                  },
                 ),
 
                 _buildGridButton(
@@ -115,7 +132,14 @@ class HomePage extends StatelessWidget {
                   iconColor: Colors.green[700]!,
                   icon: Icons.info_outlined,
                   label: 'Status',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ViewStatusScreen(),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
