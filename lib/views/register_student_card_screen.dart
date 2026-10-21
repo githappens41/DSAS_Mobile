@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:dsas_app/views/upload_photo_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RegisterStudentCardScreen extends StatefulWidget {
   const RegisterStudentCardScreen({super.key});
@@ -15,14 +16,51 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
   final _studentNumberController = TextEditingController();
   final _programmeController = TextEditingController();
   bool _showErrors = false;
+  bool _isLoading = false;
 
-  void _validateAndContinue() {
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Future<void> _validateAndContinue() async {
     setState(() => _showErrors = true);
-    if (_formKey.currentState!.validate()) {
+    if (!_formKey.currentState!.validate()) return;
+
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      _showMessage('You are not logged in. Please log in again.');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      await Supabase.instance.client.from('student_cards').upsert({
+        'user_id': user.id,
+        'full_name': _fullNameController.text.trim(),
+        'student_number': _studentNumberController.text.trim(),
+        'programme': _programmeController.text.trim(),
+      }, onConflict: 'user_id');
+
+      if (!mounted) return;
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const UploadPhotoScreen()),
       );
+    } on PostgrestException catch (e) {
+      if (!mounted) return;
+      if (e.code == '23505') {
+        _showMessage('That student number is already registered.');
+      } else {
+        _showMessage(e.message);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage('Something went wrong. Check your connection.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -88,7 +126,11 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
                       const SizedBox(height: 24),
                       _buildField("Full Name", _fullNameController),
                       const SizedBox(height: 16),
-                      _buildField("Student Number", _studentNumberController),
+                      _buildField(
+                        "Student Number",
+                        _studentNumberController,
+                        keyboardType: TextInputType.number,
+                      ),
                       const SizedBox(height: 16),
                       _buildField("Programme", _programmeController),
                       const SizedBox(height: 32),
@@ -103,7 +145,7 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _validateAndContinue,
+                  onPressed: _isLoading ? null : _validateAndContinue,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4C1D95),
                     shape: RoundedRectangleBorder(
@@ -111,10 +153,19 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
-                    "Continue to upload photo",
-                    style: TextStyle(color: Colors.white),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          "Continue to upload photo",
+                          style: TextStyle(color: Colors.white),
+                        ),
                 ),
               ),
             ),
@@ -124,7 +175,11 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
     );
   }
 
-  Widget _buildField(String label, TextEditingController c) {
+  Widget _buildField(
+    String label,
+    TextEditingController c, {
+    TextInputType? keyboardType,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -137,7 +192,9 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
         ],
         TextFormField(
           controller: c,
-          validator: (v) => v!.isEmpty ? "This field is required" : null,
+          keyboardType: keyboardType,
+          validator: (v) =>
+              (v == null || v.trim().isEmpty) ? "This field is required" : null,
           autovalidateMode: AutovalidateMode.onUserInteraction,
           decoration: InputDecoration(
             hintText: label,

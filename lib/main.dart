@@ -1,9 +1,19 @@
 import 'package:dsas_app/views/login_page.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url:'https://vlczvgksmheqtkwmuecr.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsY3p2Z2tzbWhlcXRrd211ZWNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3NzY3ODEsImV4cCI6MjEwMzM1Mjc4MX0.z0-yt0CdppUJB_35hjWpN0w8hKFUI2Rv5GE2uKqjY1s',
+  );
+
   runApp(const MainApp());
 }
+
+final supabase = Supabase.instance.client;
 
 class MainApp extends StatelessWidget {
   const MainApp({super.key});
@@ -16,7 +26,7 @@ class MainApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0D47A1)),
         scaffoldBackgroundColor: Colors.white,
       ),
-      home: LoginPage(),
+      home: const LoginPage(),
     );
   }
 }

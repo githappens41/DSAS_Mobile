@@ -1,6 +1,7 @@
 import 'package:dsas_app/views/home_page.dart';
 import 'package:dsas_app/views/register_page.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -15,13 +16,59 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
 
   bool passwordIsObscure = true;
+  bool _isLoading = false;
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
 
   Future<void> _login() async {
-    if (loginFormKey.currentState!.validate()) {
-      Navigator.push(
+    if (!loginFormKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      await Supabase.instance.client.auth.signInWithPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => HomePage()),
       );
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      _showMessage(e.message);
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage('Something went wrong. Check your connection.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _forgotPassword() async {
+    final email = _emailController.text.trim();
+
+    if (email.isEmpty || !email.contains('@')) {
+      _showMessage('Enter your email first');
+      return;
+    }
+
+    try {
+      await Supabase.instance.client.auth.resetPasswordForEmail(email);
+      if (!mounted) return;
+      _showMessage('Password reset email sent');
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      _showMessage(e.message);
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage('Something went wrong. Check your connection.');
     }
   }
 
@@ -67,6 +114,7 @@ class _LoginPageState extends State<LoginPage> {
                     TextFormField(
                       autofocus: true,
                       controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
                       autovalidateMode: AutovalidateMode.onUserInteraction,
                       decoration: InputDecoration(
                         filled: true,
@@ -76,27 +124,22 @@ class _LoginPageState extends State<LoginPage> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(15),
                         ),
-
                         enabledBorder: OutlineInputBorder(
                           borderSide: BorderSide(color: Colors.grey.shade300),
                           borderRadius: BorderRadius.circular(15),
                         ),
-
                         focusedBorder: OutlineInputBorder(
                           borderSide: BorderSide(color: Colors.grey.shade400),
                           borderRadius: BorderRadius.circular(15),
                         ),
                       ),
-
                       validator: (value) {
-                        if (value!.isEmpty) {
+                        if (value == null || value.trim().isEmpty) {
                           return 'Email is required';
                         }
-
                         if (!value.contains('@')) {
                           return 'Invalid email';
                         }
-
                         return null;
                       },
                     ),
@@ -120,7 +163,6 @@ class _LoginPageState extends State<LoginPage> {
                         fillColor: const Color(0x06000000),
                         hintText: 'Enter your password',
                         hintStyle: TextStyle(color: Colors.grey.shade500),
-
                         suffixIcon: IconButton(
                           onPressed: () {
                             setState(() {
@@ -134,27 +176,22 @@ class _LoginPageState extends State<LoginPage> {
                             color: Colors.grey,
                           ),
                         ),
-
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(15),
                         ),
-
                         enabledBorder: OutlineInputBorder(
                           borderSide: BorderSide(color: Colors.grey.shade300),
                           borderRadius: BorderRadius.circular(15),
                         ),
-
                         focusedBorder: OutlineInputBorder(
                           borderSide: BorderSide(color: Colors.grey.shade400),
                           borderRadius: BorderRadius.circular(15),
                         ),
                       ),
-
                       validator: (value) {
-                        if (value!.isEmpty) {
+                        if (value == null || value.isEmpty) {
                           return 'Password is required';
                         }
-
                         return null;
                       },
                     ),
@@ -163,7 +200,7 @@ class _LoginPageState extends State<LoginPage> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         TextButton(
-                          onPressed: () {},
+                          onPressed: _forgotPassword,
                           child: Text(
                             'Forgot Password',
                             style: Theme.of(context).textTheme.bodyMedium
@@ -191,14 +228,24 @@ class _LoginPageState extends State<LoginPage> {
                       borderRadius: BorderRadiusGeometry.circular(15),
                     ),
                   ),
-                  onPressed: _login,
-                  child: Text(
-                    'Login',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
+                  onPressed: _isLoading ? null : _login,
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          'Login',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                        ),
                 ),
               ),
               SizedBox(height: 10),

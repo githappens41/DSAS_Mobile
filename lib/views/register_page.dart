@@ -1,6 +1,7 @@
 import 'package:dsas_app/views/home_page.dart';
 import 'package:dsas_app/views/login_page.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -17,15 +18,56 @@ class _RegisterPageState extends State<RegisterPage> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  bool passwordIsObscure = false;
-  bool confirmPasswordIsObscure = false;
+  bool passwordIsObscure = true;
+  bool confirmPasswordIsObscure = true;
+  bool _isLoading = false;
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
 
   Future<void> _register() async {
-    if (registerFormKey.currentState!.validate()) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => HomePage()),
+    if (!registerFormKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final res = await Supabase.instance.client.auth.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        data: {
+          'first_name': _firstNameController.text.trim(),
+          'last_name': _lastNameController.text.trim(),
+        },
       );
+
+      if (!mounted) return;
+
+      if (res.session != null) {
+        // Email confirmation is OFF: user is logged in straight away
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => HomePage()),
+          (route) => false,
+        );
+      } else {
+        // Email confirmation is ON: user must confirm via email first
+        _showMessage('Account created. Check your email to confirm, then log in.');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+        );
+      }
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      _showMessage(e.message);
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage('Something went wrong. Check your connection.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -39,15 +81,40 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
+  InputDecoration _decoration(String hint, {Widget? suffixIcon}) {
+    return InputDecoration(
+      filled: true,
+      fillColor: const Color(0x06000000),
+      hintText: hint,
+      hintStyle: TextStyle(color: Colors.grey.shade500),
+      suffixIcon: suffixIcon,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.grey.shade400),
+        borderRadius: BorderRadius.circular(15),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final labelStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
+      fontWeight: FontWeight.w600,
+    );
+
     return Scaffold(
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: SingleChildScrollView(
           child: Column(
             children: [
-              SizedBox(height: 55),
+              const SizedBox(height: 55),
               // call to action
               Text(
                 'Create Account',
@@ -57,12 +124,12 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
               ),
               Text(
-                'Provide you details to continue',
+                'Provide your details to continue',
                 style: Theme.of(
                   context,
                 ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade500),
               ),
-              SizedBox(height: 45),
+              const SizedBox(height: 45),
 
               // form
               Form(
@@ -71,116 +138,54 @@ class _RegisterPageState extends State<RegisterPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'First Name',
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              SizedBox(height: 10),
-
+                              Text('First Name', style: labelStyle),
+                              const SizedBox(height: 10),
                               TextFormField(
                                 autofocus: true,
                                 controller: _firstNameController,
                                 autovalidateMode:
                                     AutovalidateMode.onUserInteraction,
-                                decoration: InputDecoration(
-                                  filled: true,
-                                  fillColor: const Color(0x06000000),
-                                  hintText: 'Enter your first name',
-                                  hintStyle: TextStyle(
-                                    color: Colors.grey.shade500,
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(15),
-                                  ),
-
-                                  enabledBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: Colors.grey.shade300,
-                                    ),
-                                    borderRadius: BorderRadius.circular(15),
-                                  ),
-
-                                  focusedBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: Colors.grey.shade400,
-                                    ),
-                                    borderRadius: BorderRadius.circular(15),
-                                  ),
-                                ),
-
+                                decoration: _decoration('First name'),
                                 validator: (value) {
-                                  if (value!.isEmpty) {
+                                  final v = value?.trim() ?? '';
+                                  if (v.isEmpty) {
                                     return 'First name is required';
                                   }
-
-                                  if (value.length < 3 && value.length > 20) {
-                                    return 'First name must be between 3 to 20 characters';
+                                  if (v.length < 3 || v.length > 20) {
+                                    return '3 to 20 characters';
                                   }
-
                                   return null;
                                 },
                               ),
                             ],
                           ),
                         ),
-                        SizedBox(width: 10),
-
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Last Name',
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              SizedBox(height: 10),
-
+                              Text('Last Name', style: labelStyle),
+                              const SizedBox(height: 10),
                               TextFormField(
                                 controller: _lastNameController,
                                 autovalidateMode:
                                     AutovalidateMode.onUserInteraction,
-                                decoration: InputDecoration(
-                                  filled: true,
-                                  fillColor: const Color(0x06000000),
-                                  hintText: 'Enter your last name',
-                                  hintStyle: TextStyle(
-                                    color: Colors.grey.shade500,
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(15),
-                                  ),
-
-                                  enabledBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: Colors.grey.shade300,
-                                    ),
-                                    borderRadius: BorderRadius.circular(15),
-                                  ),
-
-                                  focusedBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: Colors.grey.shade400,
-                                    ),
-                                    borderRadius: BorderRadius.circular(15),
-                                  ),
-                                ),
-
+                                decoration: _decoration('Last name'),
                                 validator: (value) {
-                                  if (value!.isEmpty) {
+                                  final v = value?.trim() ?? '';
+                                  if (v.isEmpty) {
                                     return 'Last name is required';
                                   }
-
-                                  if (value.length < 3 && value.length > 20) {
-                                    return 'Last name must be between 3 to 20 characters';
+                                  if (v.length < 3 || v.length > 20) {
+                                    return '3 to 20 characters';
                                   }
-
                                   return null;
                                 },
                               ),
@@ -189,73 +194,37 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                       ],
                     ),
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
                     // email
-                    Text(
-                      'Email',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(height: 10),
-
+                    Text('Email', style: labelStyle),
+                    const SizedBox(height: 10),
                     TextFormField(
                       controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
                       autovalidateMode: AutovalidateMode.onUserInteraction,
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: const Color(0x06000000),
-                        hintText: 'Enter your email',
-                        hintStyle: TextStyle(color: Colors.grey.shade500),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey.shade400),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                      ),
-
+                      decoration: _decoration('Enter your email'),
                       validator: (value) {
-                        if (value!.isEmpty) {
+                        if (value == null || value.trim().isEmpty) {
                           return 'Email is required';
                         }
-
                         if (!value.contains('@')) {
                           return 'Invalid email';
                         }
-
                         return null;
                       },
                     ),
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
                     // password
-                    Text(
-                      'Password',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(height: 10),
-
+                    Text('Password', style: labelStyle),
+                    const SizedBox(height: 10),
                     TextFormField(
                       controller: _passwordController,
                       autovalidateMode: AutovalidateMode.onUserInteraction,
                       obscureText: passwordIsObscure,
-                      decoration: InputDecoration(
-                        filled: passwordIsObscure,
-                        fillColor: const Color(0x06000000),
-                        hintText: 'Enter your password',
-                        hintStyle: TextStyle(color: Colors.grey.shade500),
-
+                      decoration: _decoration(
+                        'Enter your password',
                         suffixIcon: IconButton(
                           onPressed: () {
                             setState(() {
@@ -269,55 +238,28 @@ class _RegisterPageState extends State<RegisterPage> {
                             color: Colors.grey,
                           ),
                         ),
-
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey.shade400),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
                       ),
-
                       validator: (value) {
-                        if (value!.isEmpty) {
+                        if (value == null || value.isEmpty) {
                           return 'Password is required';
                         }
-
                         if (value.length < 8) {
-                          return 'Password is too weak';
+                          return 'Password must be at least 8 characters';
                         }
-
                         return null;
                       },
                     ),
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
                     // confirm password
-                    Text(
-                      'Confirm Password',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(height: 10),
-
+                    Text('Confirm Password', style: labelStyle),
+                    const SizedBox(height: 10),
                     TextFormField(
                       controller: _confirmPasswordController,
                       autovalidateMode: AutovalidateMode.onUserInteraction,
                       obscureText: confirmPasswordIsObscure,
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: const Color(0x06000000),
-                        hintText: 'Confirm your password',
-                        hintStyle: TextStyle(color: Colors.grey.shade500),
-
+                      decoration: _decoration(
+                        'Confirm your password',
                         suffixIcon: IconButton(
                           onPressed: () {
                             setState(() {
@@ -332,42 +274,23 @@ class _RegisterPageState extends State<RegisterPage> {
                             color: Colors.grey,
                           ),
                         ),
-
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey.shade400),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
                       ),
-
                       validator: (value) {
-                        if (value!.isEmpty) {
+                        if (value == null || value.isEmpty) {
                           return 'Confirm your password';
                         }
-
-                        final password = _passwordController.text;
-
-                        if (value != password) {
+                        if (value != _passwordController.text) {
                           return 'Passwords do not match';
                         }
-
                         return null;
                       },
                     ),
                   ],
                 ),
               ),
-              SizedBox(height: 30),
+              const SizedBox(height: 30),
 
-              // login button
+              // register button
               SizedBox(
                 height: 55,
                 width: double.infinity,
@@ -375,31 +298,43 @@ class _RegisterPageState extends State<RegisterPage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[900],
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadiusGeometry.circular(15),
+                      borderRadius: BorderRadius.circular(15),
                     ),
                   ),
-                  onPressed: _register,
-                  child: Text(
-                    'Register',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
+                  onPressed: _isLoading ? null : _register,
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          'Register',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                        ),
                 ),
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
 
-              // don't have an account
+              // already have an account
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('Already have an account?'),
+                  const Text('Already have an account?'),
                   TextButton(
                     onPressed: () {
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(builder: (context) => LoginPage()),
+                        MaterialPageRoute(
+                          builder: (context) => const LoginPage(),
+                        ),
                       );
                     },
                     child: Text(
