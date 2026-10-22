@@ -7,12 +7,11 @@ class HelpSupportScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.blue[900],
+        backgroundColor: const Color(0xFF1A004F),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () =>
-              Navigator.pop(context), // Goes back to the previous screen
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Help & Support',

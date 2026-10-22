@@ -1,7 +1,7 @@
 import 'package:dsas_app/views/active_card_screen.dart';
 import 'package:dsas_app/views/help_support_screen.dart';
 import 'package:dsas_app/views/login_page.dart';
-import 'package:dsas_app/views/profile_details_page.dart';
+import 'package:dsas_app/views/my_details_page.dart';
 import 'package:dsas_app/views/view_status_screen.dart';
 import 'package:dsas_app/viewmodels/profile_viewmodel.dart';
 import 'package:flutter/material.dart';
@@ -63,19 +63,20 @@ class _HomePageState extends State<HomePage> {
             children: [
               Image.asset(
                 'assets/images/homepage_hero.jpeg',
-                height: 270,
+                height: 240,
                 width: double.infinity,
                 fit: BoxFit.cover,
               ),
               Container(
-                height: 270,
+                height: 240,
                 width: double.infinity,
-                color: const Color.fromARGB(161, 0, 0, 0),
+                color: const Color.fromARGB(181, 0, 0, 0),
                 child: Padding(
                   padding: const EdgeInsets.only(top: 45, left: 15, right: 10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Top Row: Title & Sign out
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -83,7 +84,7 @@ class _HomePageState extends State<HomePage> {
                             child: Text(
                               'Digital Student Access System',
                               style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(color: Colors.white),
+                                  ?.copyWith(color: Colors.white, fontSize: 16),
                             ),
                           ),
                           IconButton(
@@ -95,6 +96,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 30),
 
+                      // Greeting
                       Selector<ProfileViewmodel, String>(
                         selector: (_, vm) =>
                             vm.profile?.name.trim().split(' ').first ?? '',
@@ -114,6 +116,7 @@ class _HomePageState extends State<HomePage> {
 
                       const SizedBox(height: 10),
 
+                      // Subtitle
                       Text(
                         'Welcome to your student digital access system',
                         style: Theme.of(
@@ -129,12 +132,13 @@ class _HomePageState extends State<HomePage> {
 
           const SizedBox(height: 20),
 
+          // Grid Buttons
           Expanded(
             child: GridView.count(
               crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              padding: const EdgeInsets.symmetric(horizontal: 15),
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               children: [
                 _buildGridButton(
                   context,
@@ -174,9 +178,7 @@ class _HomePageState extends State<HomePage> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const ProfileDetailsPage(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const MyDetailsPage()),
                     );
                   },
                 ),
@@ -231,8 +233,8 @@ class _HomePageState extends State<HomePage> {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0x0B000000),
-          borderRadius: BorderRadius.circular(10),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
           border: Border.all(color: Colors.grey.shade200),
         ),
         child: Center(
@@ -241,17 +243,25 @@ class _HomePageState extends State<HomePage> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               Container(
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: iconColor,
-                  borderRadius: BorderRadius.circular(1000),
-                  border: Border.all(color: Colors.grey.shade200),
+                  color: iconColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
                 ),
-                child: IconButton(
-                  onPressed: onTap,
-                  icon: Icon(icon, color: Colors.white),
+                child: Icon(icon, color: iconColor, size: 28),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey.shade800,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              Text(label, textAlign: TextAlign.center),
             ],
           ),
         ),
