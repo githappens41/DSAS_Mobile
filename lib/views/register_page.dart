@@ -22,52 +22,74 @@ class _RegisterPageState extends State<RegisterPage> {
   bool confirmPasswordIsObscure = true;
   bool _isLoading = false;
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
   Future<void> _register() async {
-    if (!registerFormKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
     try {
-      final res = await Supabase.instance.client.auth.signUp(
-        email: _emailController.text.trim(),
+      final supabase = Supabase.instance.client;
+
+      final fullName =
+          '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}'
+              .trim();
+
+      final email = _emailController.text.trim();
+
+      final response = await supabase.auth.signUp(
+        email: email,
         password: _passwordController.text,
         data: {
           'first_name': _firstNameController.text.trim(),
           'last_name': _lastNameController.text.trim(),
+          'name': fullName,
         },
       );
 
+      final user = response.user;
+
+      if (user == null) {
+        throw Exception('Registration failed. Please try again.');
+      }
+
+      // Create the profile immediately when a session is available.
+      if (response.session != null) {
+        await supabase.from('profiles').upsert({
+          'user_id': user.id,
+          'name': fullName,
+          'email': email,
+        }, onConflict: 'user_id');
+      }
+
       if (!mounted) return;
 
-      if (res.session != null) {
-        // Email confirmation is OFF: user is logged in straight away
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => HomePage()),
-          (route) => false,
-        );
-      } else {
-        // Email confirmation is ON: user must confirm via email first
-        _showMessage('Account created. Check your email to confirm, then log in.');
+      if (response.session != null) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const LoginPage()),
+          MaterialPageRoute(builder: (_) => const HomePage()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Registration successful. Check your email to confirm your account.',
+            ),
+          ),
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
         );
       }
     } on AuthException catch (e) {
       if (!mounted) return;
-      _showMessage(e.message);
-    } catch (_) {
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
       if (!mounted) return;
-      _showMessage('Something went wrong. Check your connection.');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Registration failed: $e')));
     }
   }
 
@@ -88,9 +110,7 @@ class _RegisterPageState extends State<RegisterPage> {
       hintText: hint,
       hintStyle: TextStyle(color: Colors.grey.shade500),
       suffixIcon: suffixIcon,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
       enabledBorder: OutlineInputBorder(
         borderSide: BorderSide(color: Colors.grey.shade300),
         borderRadius: BorderRadius.circular(15),
@@ -104,9 +124,9 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
-    final labelStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
-      fontWeight: FontWeight.w600,
-    );
+    final labelStyle = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600);
 
     return Scaffold(
       body: Padding(

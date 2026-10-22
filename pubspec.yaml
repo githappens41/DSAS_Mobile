@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   image_picker: ^1.2.4
+  provider: ^6.1.5+1
   supabase_flutter: ^2.18.3
 
 dev_dependencies:
@@ -24,3 +25,4 @@ flutter:
     - assets/images/cut_emblem.jpeg
     - assets/images/barcode.jpeg
     - assets/images/image.webp
+    - assets/images/homepage_hero.jpeg

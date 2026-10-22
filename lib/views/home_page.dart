@@ -1,70 +1,132 @@
 import 'package:dsas_app/views/active_card_screen.dart';
 import 'package:dsas_app/views/help_support_screen.dart';
-import 'package:dsas_app/views/view_status_screen.dart';
-import 'package:flutter/material.dart';
 import 'package:dsas_app/views/login_page.dart';
+import 'package:dsas_app/views/profile_details_page.dart';
+import 'package:dsas_app/views/view_status_screen.dart';
+import 'package:dsas_app/viewmodels/profile_viewmodel.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:dsas_app/views/register_student_card_screen.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<ProfileViewmodel>().loadProfile();
+      }
+    });
+  }
+
+  Future<void> _signOut() async {
+    try {
+      await Supabase.instance.client.auth.signOut();
+
+      if (!mounted) return;
+
+      context.read<ProfileViewmodel>().clearProfile();
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => LoginPage()),
+      );
+    } on AuthException catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to sign out. Please try again.')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Column(
         children: [
-          Container(
-            height: 300,
-            width: double.infinity,
-            color: Colors.blue[900],
-            child: Padding(
-              padding: const EdgeInsets.only(top: 45.0, left: 15.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Stack(
+            children: [
+              Image.asset(
+                'assets/images/homepage_hero.jpeg',
+                height: 270,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+              Container(
+                height: 270,
+                width: double.infinity,
+                color: const Color.fromARGB(161, 0, 0, 0),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 45, left: 15, right: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Digital Student Access System',
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodyMedium?.copyWith(color: Colors.white),
-                      ),
-                      IconButton(
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const LoginPage(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Digital Student Access System',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: Colors.white),
                             ),
+                          ),
+                          IconButton(
+                            tooltip: 'Sign out',
+                            onPressed: _signOut,
+                            icon: const Icon(Icons.logout, color: Colors.white),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 30),
+
+                      Selector<ProfileViewmodel, String>(
+                        selector: (_, vm) =>
+                            vm.profile?.name.trim().split(' ').first ?? '',
+                        builder: (context, firstName, _) {
+                          return Text(
+                            firstName.isNotEmpty
+                                ? 'Hello, $firstName'
+                                : 'Hello!',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
                           );
                         },
-                        icon: const Icon(Icons.logout, color: Colors.white),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      Text(
+                        'Welcome to your student digital access system',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 30),
-
-                  Text(
-                    'Hello, Tshepiso',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  Text(
-                    'Welcome to your student digital access system',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
+
           const SizedBox(height: 20),
 
           Expanded(
@@ -83,7 +145,7 @@ class HomePage extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const RegisterStudentCardScreen(),
+                        builder: (_) => const RegisterStudentCardScreen(),
                       ),
                     );
                   },
@@ -98,7 +160,7 @@ class HomePage extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const ActiveCardScreen(),
+                        builder: (_) => const ActiveCardScreen(),
                       ),
                     );
                   },
@@ -109,7 +171,14 @@ class HomePage extends StatelessWidget {
                   iconColor: Colors.lightBlue[700]!,
                   icon: Icons.person_outline,
                   label: 'My Details',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ProfileDetailsPage(),
+                      ),
+                    );
+                  },
                 ),
 
                 _buildGridButton(
@@ -121,7 +190,7 @@ class HomePage extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const HelpSupportScreen(),
+                        builder: (_) => const HelpSupportScreen(),
                       ),
                     );
                   },
@@ -136,7 +205,7 @@ class HomePage extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const ViewStatusScreen(),
+                        builder: (_) => const ViewStatusScreen(),
                       ),
                     );
                   },
@@ -144,6 +213,7 @@ class HomePage extends StatelessWidget {
               ],
             ),
           ),
+
           const SizedBox(height: 50),
         ],
       ),
