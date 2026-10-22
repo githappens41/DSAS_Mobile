@@ -51,7 +51,6 @@ class _RegisterPageState extends State<RegisterPage> {
         throw Exception('Registration failed. Please try again.');
       }
 
-      // Create the profile immediately when a session is available.
       if (response.session != null) {
         await supabase.from('profiles').upsert({
           'user_id': user.id,
@@ -146,7 +145,6 @@ class _RegisterPageState extends State<RegisterPage> {
             child: Column(
               children: [
                 const SizedBox(height: 20),
-                // call to action
                 const Text(
                   'Create Account',
                   style: TextStyle(
@@ -162,7 +160,6 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
                 const SizedBox(height: 35),
 
-                // form
                 Form(
                   key: registerFormKey,
                   child: Column(
@@ -231,7 +228,6 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                       const SizedBox(height: 20),
 
-                      // email
                       Text('Email', style: labelStyle),
                       const SizedBox(height: 10),
                       TextFormField(
@@ -253,7 +249,6 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                       const SizedBox(height: 20),
 
-                      // password
                       Text('Password', style: labelStyle),
                       const SizedBox(height: 10),
                       TextFormField(
@@ -290,7 +285,6 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                       const SizedBox(height: 20),
 
-                      // confirm password
                       Text('Confirm Password', style: labelStyle),
                       const SizedBox(height: 10),
                       TextFormField(
@@ -331,7 +325,6 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
                 const SizedBox(height: 30),
 
-                // register button
                 SizedBox(
                   height: 55,
                   width: double.infinity,
@@ -365,7 +358,6 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
                 const SizedBox(height: 15),
 
-                // already have an account
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

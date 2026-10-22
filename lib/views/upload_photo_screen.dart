@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:dsas_app/views/view_status_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -14,16 +16,19 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
   final _picker = ImagePicker();
 
   XFile? _photo;
-  XFile? _proof;
+  File? _proofPdf;
+  String? _proofPdfName;
   bool _isLoading = false;
 
+  static const Color _primaryBlue = Color(0xFF0D47A1);
+
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _pick({required bool isPhoto}) async {
+  Future<void> _pickPhoto() async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       builder: (context) => SafeArea(
@@ -51,39 +56,54 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
         source: source,
         imageQuality: 80,
         maxWidth: 1280,
-        preferredCameraDevice:
-            isPhoto ? CameraDevice.front : CameraDevice.rear,
+        preferredCameraDevice: CameraDevice.front,
       );
       if (picked == null || !mounted) return;
-      setState(() {
-        if (isPhoto) {
-          _photo = picked;
-        } else {
-          _proof = picked;
-        }
-      });
+      setState(() => _photo = picked);
     } catch (_) {
       if (!mounted) return;
       _showMessage('Could not open the camera or gallery.');
     }
   }
 
-  Future<String> _upload(XFile file, String userId, String name) async {
-    final bytes = await file.readAsBytes();
+  Future<void> _pickPdf() async {
+    try {
+      final picked = await _picker.pickMedia();
 
-    var ext = file.name.contains('.')
-        ? file.name.split('.').last.toLowerCase()
-        : 'jpg';
-    if (ext == 'jpeg') ext = 'jpg';
+      if (picked != null) {
+        if (picked.name.toLowerCase().endsWith('.pdf')) {
+          setState(() {
+            _proofPdf = File(picked.path);
+            _proofPdfName = picked.name;
+          });
+        } else {
+          _showMessage('Please select a PDF file only.');
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage('Error picking file: $e');
+    }
+  }
 
-    final path = '$userId/$name.$ext';
-    final contentType = ext == 'png' ? 'image/png' : 'image/jpeg';
+  Future<String> _uploadFile(
+    String userId,
+    String name,
+    String extension,
+    List<int> bytes,
+  ) async {
+    final path = '$userId/$name.$extension';
+
+    String contentType = 'application/octet-stream';
+    if (extension == 'jpg' || extension == 'jpeg') contentType = 'image/jpeg';
+    if (extension == 'png') contentType = 'image/png';
+    if (extension == 'pdf') contentType = 'application/pdf';
 
     await Supabase.instance.client.storage
         .from('student-uploads')
         .uploadBinary(
           path,
-          bytes,
+          Uint8List.fromList(bytes),
           fileOptions: FileOptions(upsert: true, contentType: contentType),
         );
 
@@ -95,8 +115,8 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
       _showMessage('Please add your photo.');
       return;
     }
-    if (_proof == null) {
-      _showMessage('Please add your proof of registration.');
+    if (_proofPdf == null) {
+      _showMessage('Please add your proof of registration (PDF).');
       return;
     }
 
@@ -109,14 +129,29 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final photoPath = await _upload(_photo!, user.id, 'photo');
-      final proofPath = await _upload(_proof!, user.id, 'proof');
+      final photoBytes = await _photo!.readAsBytes();
+      var photoExt = _photo!.name.contains('.')
+          ? _photo!.name.split('.').last.toLowerCase()
+          : 'jpg';
+      if (photoExt == 'jpeg') photoExt = 'jpg';
+      final photoPath = await _uploadFile(
+        user.id,
+        'photo',
+        photoExt,
+        photoBytes,
+      );
 
-      await Supabase.instance.client.from('student_cards').update({
-        'photo_url': photoPath,
-        'proof_url': proofPath,
-        'status': 'pending',
-      }).eq('user_id', user.id);
+      final proofBytes = await _proofPdf!.readAsBytes();
+      final proofPath = await _uploadFile(user.id, 'proof', 'pdf', proofBytes);
+
+      await Supabase.instance.client
+          .from('student_cards')
+          .update({
+            'photo_url': photoPath,
+            'proof_url': proofPath,
+            'status': 'pending',
+          })
+          .eq('user_id', user.id);
 
       if (!mounted) return;
       Navigator.push(
@@ -129,9 +164,9 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
     } on PostgrestException catch (e) {
       if (!mounted) return;
       _showMessage(e.message);
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      _showMessage('Something went wrong. Check your connection.');
+      _showMessage('Something went wrong: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -159,7 +194,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                padding: const EdgeInsets.all(20.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -182,44 +217,39 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
                       ),
                     ),
                     const SizedBox(height: 32),
-                    _buildUploadBox(
-                      "+Take/upload photo",
-                      _photo,
-                      () => _pick(isPhoto: true),
-                    ),
+
+                    _buildPhotoBox("+Take/upload photo", _photo, _pickPhoto),
+
                     const SizedBox(height: 24),
                     const Text(
                       "Proof of registration",
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                         fontSize: 14,
                         color: Colors.black87,
                       ),
                     ),
                     const SizedBox(height: 12),
-                    _buildUploadBox(
-                      "+Take/upload photo",
-                      _proof,
-                      () => _pick(isPhoto: false),
-                    ),
-                    const SizedBox(height: 24),
+
+                    _buildPdfBox(),
                   ],
                 ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(20.0),
               child: SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 55,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[900],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    backgroundColor: _primaryBlue,
+                    foregroundColor: Colors.white,
                     elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
                   ),
                   child: _isLoading
                       ? const SizedBox(
@@ -232,7 +262,10 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
                         )
                       : const Text(
                           "Submit registration",
-                          style: TextStyle(color: Colors.white, fontSize: 14),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
                         ),
                 ),
               ),
@@ -243,7 +276,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
     );
   }
 
-  Widget _buildUploadBox(String text, XFile? file, VoidCallback onTap) {
+  Widget _buildPhotoBox(String text, XFile? file, VoidCallback onTap) {
     return GestureDetector(
       onTap: _isLoading ? null : onTap,
       child: Container(
@@ -299,6 +332,53 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
                         style: TextStyle(color: Colors.white, fontSize: 11),
                       ),
                     ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildPdfBox() {
+    return GestureDetector(
+      onTap: _isLoading ? null : _pickPdf,
+      child: Container(
+        height: 140,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: const Color(0xFF1F2029),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: _proofPdf == null
+            ? const Center(
+                child: Text(
+                  "+ Upload PDF Document",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                  ),
+                ),
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.picture_as_pdf, color: Colors.red, size: 40),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Text(
+                      _proofPdfName ?? 'Document.pdf',
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Tap to change',
+                    style: TextStyle(color: Colors.white54, fontSize: 11),
                   ),
                 ],
               ),

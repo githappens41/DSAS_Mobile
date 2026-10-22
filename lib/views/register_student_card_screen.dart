@@ -15,17 +15,18 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
   final _fullNameController = TextEditingController();
   final _studentNumberController = TextEditingController();
   final _programmeController = TextEditingController();
-  bool _showErrors = false;
   bool _isLoading = false;
 
+  static const Color _primaryBlue = Color(0xFF0D47A1);
+  static const Color _textColor = Colors.black87;
+
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _validateAndContinue() async {
-    setState(() => _showErrors = true);
     if (!_formKey.currentState!.validate()) return;
 
     final user = Supabase.instance.client.auth.currentUser;
@@ -72,8 +73,37 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
     super.dispose();
   }
 
+  InputDecoration _decoration(String hint) {
+    return InputDecoration(
+      filled: true,
+      fillColor: Colors.grey.shade50,
+      hintText: hint,
+      hintStyle: const TextStyle(color: Colors.black45),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: const BorderSide(color: _primaryBlue, width: 2),
+      ),
+      errorStyle: const TextStyle(color: Colors.redAccent),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final labelStyle = TextStyle(
+      fontWeight: FontWeight.w600,
+      color: _textColor,
+      fontSize: 14,
+    );
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -94,7 +124,7 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                padding: const EdgeInsets.all(20.0),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -105,34 +135,69 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
                           "Register Student\nCard",
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            color: _textColor,
                           ),
                         ),
                       ),
                       const SizedBox(height: 24),
-                      const Text(
+                      Text(
                         "Personal Information",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
+                        style: labelStyle.copyWith(fontSize: 16),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         "Please fill in your details",
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 14,
+                        ),
                       ),
                       const SizedBox(height: 24),
-                      _buildField("Full Name", _fullNameController),
-                      const SizedBox(height: 16),
-                      _buildField(
-                        "Student Number",
-                        _studentNumberController,
-                        keyboardType: TextInputType.number,
+
+                      Text('Full Name', style: labelStyle),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _fullNameController,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        style: const TextStyle(color: _textColor),
+                        cursorColor: _primaryBlue,
+                        decoration: _decoration('Full Name'),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? "This field is required"
+                            : null,
                       ),
-                      const SizedBox(height: 16),
-                      _buildField("Programme", _programmeController),
+                      const SizedBox(height: 20),
+
+                      Text('Student Number', style: labelStyle),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _studentNumberController,
+                        keyboardType: TextInputType.number,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        style: const TextStyle(color: _textColor),
+                        cursorColor: _primaryBlue,
+                        decoration: _decoration('Student Number'),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? "This field is required"
+                            : null,
+                      ),
+                      const SizedBox(height: 20),
+
+                      Text('Programme', style: labelStyle),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _programmeController,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
+                        style: const TextStyle(color: _textColor),
+                        cursorColor: _primaryBlue,
+                        decoration: _decoration('Programme'),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? "This field is required"
+                            : null,
+                      ),
+
                       const SizedBox(height: 32),
                     ],
                   ),
@@ -140,18 +205,19 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(20.0),
               child: SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 55,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _validateAndContinue,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4C1D95),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    backgroundColor: _primaryBlue,
+                    foregroundColor: Colors.white,
                     elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
                   ),
                   child: _isLoading
                       ? const SizedBox(
@@ -164,7 +230,10 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
                         )
                       : const Text(
                           "Continue to upload photo",
-                          style: TextStyle(color: Colors.white),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
                         ),
                 ),
               ),
@@ -172,62 +241,6 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildField(
-    String label,
-    TextEditingController c, {
-    TextInputType? keyboardType,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (!_showErrors) ...[
-          Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-          ),
-          const SizedBox(height: 8),
-        ],
-        TextFormField(
-          controller: c,
-          keyboardType: keyboardType,
-          validator: (v) =>
-              (v == null || v.trim().isEmpty) ? "This field is required" : null,
-          autovalidateMode: AutovalidateMode.onUserInteraction,
-          decoration: InputDecoration(
-            hintText: label,
-            hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
-            fillColor: Colors.grey[200],
-            filled: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide.none,
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(
-                color: Color(0xFF4C1D95),
-                width: 1.5,
-              ),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Colors.red),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Colors.red, width: 1.5),
-            ),
-            errorStyle: const TextStyle(color: Colors.red, fontSize: 11),
-          ),
-        ),
-      ],
     );
   }
 }
