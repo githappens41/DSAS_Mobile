@@ -26,9 +26,9 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-  ChangeNotifierProvider(create: (_) => ProfileViewmodel()),
-  ChangeNotifierProvider(create: (_) => RegisterStudentCardViewModel()),
-],
+        ChangeNotifierProvider(create: (_) => ProfileViewmodel()),
+        ChangeNotifierProvider(create: (_) => RegisterStudentCardViewModel()),
+      ],
       builder: (context, child) {
         return MaterialApp(
           debugShowCheckedModeBanner: false,

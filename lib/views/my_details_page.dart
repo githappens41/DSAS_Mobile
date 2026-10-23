@@ -83,14 +83,18 @@ class MyDetailsPage extends StatelessWidget {
                     CircleAvatar(
                       radius: 45,
                       backgroundColor: _primaryBlue,
-                      child: Text(
+
+                      
+                      backgroundImage: profile.imageUrl.isNotEmpty ? NetworkImage(profile.imageUrl) : null,
+
+                      child: profile.imageUrl.isEmpty ? Text(
                         initials,
                         style: const TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
-                      ),
+                      ) : Container(),
                     ),
                     const SizedBox(width: 20),
 
