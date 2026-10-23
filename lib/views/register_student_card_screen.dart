@@ -1,6 +1,7 @@
+import 'package:dsas_app/viewmodels/register_student_card_view_model.dart';
 import 'package:dsas_app/views/upload_photo_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
 
 class RegisterStudentCardScreen extends StatefulWidget {
   const RegisterStudentCardScreen({super.key});
@@ -15,54 +16,32 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
   final _fullNameController = TextEditingController();
   final _studentNumberController = TextEditingController();
   final _programmeController = TextEditingController();
-  bool _isLoading = false;
 
   static const Color _primaryBlue = Color(0xFF0D47A1);
   static const Color _textColor = Colors.black87;
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+  @override
+  void initState() {
+    super.initState();
+    final vm = context.read<RegisterStudentCardViewModel>();
+    _fullNameController.text = vm.fullName;
+    _studentNumberController.text = vm.studentNumber;
+    _programmeController.text = vm.programme;
   }
 
-  Future<void> _validateAndContinue() async {
+  void _validateAndContinue() {
     if (!_formKey.currentState!.validate()) return;
 
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) {
-      _showMessage('You are not logged in. Please log in again.');
-      return;
-    }
+    context.read<RegisterStudentCardViewModel>().setDetails(
+      fullName: _fullNameController.text,
+      studentNumber: _studentNumberController.text,
+      programme: _programmeController.text,
+    );
 
-    setState(() => _isLoading = true);
-
-    try {
-      await Supabase.instance.client.from('student_cards').upsert({
-        'user_id': user.id,
-        'full_name': _fullNameController.text.trim(),
-        'student_number': _studentNumberController.text.trim(),
-        'programme': _programmeController.text.trim(),
-      }, onConflict: 'user_id');
-
-      if (!mounted) return;
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const UploadPhotoScreen()),
-      );
-    } on PostgrestException catch (e) {
-      if (!mounted) return;
-      if (e.code == '23505') {
-        _showMessage('That student number is already registered.');
-      } else {
-        _showMessage(e.message);
-      }
-    } catch (_) {
-      if (!mounted) return;
-      _showMessage('Something went wrong. Check your connection.');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const UploadPhotoScreen()),
+    );
   }
 
   @override
@@ -92,23 +71,24 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
         borderRadius: BorderRadius.circular(15),
         borderSide: const BorderSide(color: _primaryBlue, width: 2),
       ),
-      errorStyle: const TextStyle(color: Colors.redAccent),
+      errorStyle: const TextStyle(color: Colors.red),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final labelStyle = TextStyle(
+    const labelStyle = TextStyle(
       fontWeight: FontWeight.w600,
       color: _textColor,
       fontSize: 14,
     );
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.blue[900],  
+        backgroundColor: Colors.blue[900],
         title: const Text(
-          "Register",
+          'Register',
           style: TextStyle(color: Colors.white, fontSize: 18),
         ),
         centerTitle: true,
@@ -130,21 +110,21 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 24),
-                      Text(
-                        "Personal Information",
-                        style: labelStyle.copyWith(fontSize: 16),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "Please fill in your details",
+                      const Text(
+                        'Personal Information',
                         style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: _textColor,
+                          fontSize: 16,
                         ),
                       ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Please fill in your details',
+                        style: TextStyle(color: Colors.black54, fontSize: 14),
+                      ),
                       const SizedBox(height: 24),
-
-                      Text('Full Name', style: labelStyle),
+                      const Text('Full Name', style: labelStyle),
                       const SizedBox(height: 10),
                       TextFormField(
                         controller: _fullNameController,
@@ -153,12 +133,11 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
                         cursorColor: _primaryBlue,
                         decoration: _decoration('Full Name'),
                         validator: (v) => (v == null || v.trim().isEmpty)
-                            ? "This field is required"
+                            ? 'This field is required'
                             : null,
                       ),
                       const SizedBox(height: 20),
-
-                      Text('Student Number', style: labelStyle),
+                      const Text('Student Number', style: labelStyle),
                       const SizedBox(height: 10),
                       TextFormField(
                         controller: _studentNumberController,
@@ -168,12 +147,11 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
                         cursorColor: _primaryBlue,
                         decoration: _decoration('Student Number'),
                         validator: (v) => (v == null || v.trim().isEmpty)
-                            ? "This field is required"
+                            ? 'This field is required'
                             : null,
                       ),
                       const SizedBox(height: 20),
-
-                      Text('Programme', style: labelStyle),
+                      const Text('Programme', style: labelStyle),
                       const SizedBox(height: 10),
                       TextFormField(
                         controller: _programmeController,
@@ -182,10 +160,9 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
                         cursorColor: _primaryBlue,
                         decoration: _decoration('Programme'),
                         validator: (v) => (v == null || v.trim().isEmpty)
-                            ? "This field is required"
+                            ? 'This field is required'
                             : null,
                       ),
-
                       const SizedBox(height: 32),
                     ],
                   ),
@@ -198,7 +175,7 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _validateAndContinue,
+                  onPressed: _validateAndContinue,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primaryBlue,
                     foregroundColor: Colors.white,
@@ -207,22 +184,10 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
                       borderRadius: BorderRadius.circular(15),
                     ),
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          "Continue to upload photo",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
+                  child: const Text(
+                    'Continue to upload photo',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                  ),
                 ),
               ),
             ),

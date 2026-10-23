@@ -1,13 +1,15 @@
+import 'package:dsas_app/viewmodels/profile_viewmodel.dart';
+import 'package:dsas_app/viewmodels/register_student_card_view_model.dart';
 import 'package:dsas_app/views/active_card_screen.dart';
 import 'package:dsas_app/views/help_support_screen.dart';
+import 'package:dsas_app/views/inactive_card_screen.dart';
 import 'package:dsas_app/views/login_page.dart';
 import 'package:dsas_app/views/my_details_page.dart';
+import 'package:dsas_app/views/register_student_card_screen.dart';
 import 'package:dsas_app/views/view_status_screen.dart';
-import 'package:dsas_app/viewmodels/profile_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:dsas_app/views/register_student_card_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -24,6 +26,7 @@ class _HomePageState extends State<HomePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<ProfileViewmodel>().loadProfile();
+        context.read<RegisterStudentCardViewModel>().loadStatus();
       }
     });
   }
@@ -35,6 +38,7 @@ class _HomePageState extends State<HomePage> {
       if (!mounted) return;
 
       context.read<ProfileViewmodel>().clearProfile();
+      context.read<RegisterStudentCardViewModel>().clear();
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => LoginPage()),
@@ -54,9 +58,26 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _openCard() async {
+    final reg = context.read<RegisterStudentCardViewModel>();
+    await reg.loadStatus();
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            reg.isApproved ? const ActiveCardScreen() : const InactiveCardScreen(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final reg = context.watch<RegisterStudentCardViewModel>();
+
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Column(
         children: [
           Stack(
@@ -76,15 +97,13 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Top Row: Title & Sign out
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(
+                          const Expanded(
                             child: Text(
                               'Digital Student Access System',
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(color: Colors.white, fontSize: 16),
+                              style: TextStyle(color: Colors.white, fontSize: 16),
                             ),
                           ),
                           IconButton(
@@ -95,8 +114,6 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                       const SizedBox(height: 30),
-
-                      // Greeting
                       Selector<ProfileViewmodel, String>(
                         selector: (_, vm) =>
                             vm.profile?.name.trim().split(' ').first ?? '',
@@ -113,10 +130,7 @@ class _HomePageState extends State<HomePage> {
                           );
                         },
                       ),
-
                       const SizedBox(height: 10),
-
-                      // Subtitle
                       Text(
                         'Welcome to your student digital access system',
                         style: Theme.of(
@@ -129,10 +143,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
-
           const SizedBox(height: 20),
-
-          // Grid Buttons
           Expanded(
             child: GridView.count(
               crossAxisCount: 2,
@@ -141,10 +152,9 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               children: [
                 _buildGridButton(
-                  context,
-                  iconColor: Colors.blue[900]!,
                   icon: Icons.add,
                   label: 'Register \n Student Card',
+                  enabled: reg.canRegister,
                   onTap: () {
                     Navigator.push(
                       context,
@@ -154,25 +164,12 @@ class _HomePageState extends State<HomePage> {
                     );
                   },
                 ),
-
                 _buildGridButton(
-                  context,
-                  iconColor: Colors.amber[700]!,
                   icon: Icons.credit_card_rounded,
                   label: 'View My Card',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ActiveCardScreen(),
-                      ),
-                    );
-                  },
+                  onTap: _openCard,
                 ),
-
                 _buildGridButton(
-                  context,
-                  iconColor: Colors.lightBlue[700]!,
                   icon: Icons.person_outline,
                   label: 'My Details',
                   onTap: () {
@@ -182,10 +179,7 @@ class _HomePageState extends State<HomePage> {
                     );
                   },
                 ),
-
                 _buildGridButton(
-                  context,
-                  iconColor: Colors.red[900]!,
                   icon: Icons.question_mark,
                   label: 'Help & Support',
                   onTap: () {
@@ -197,10 +191,7 @@ class _HomePageState extends State<HomePage> {
                     );
                   },
                 ),
-
                 _buildGridButton(
-                  context,
-                  iconColor: Colors.green[700]!,
                   icon: Icons.info_outlined,
                   label: 'Status',
                   onTap: () {
@@ -215,22 +206,22 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
-
           const SizedBox(height: 50),
         ],
       ),
     );
   }
 
-  Widget _buildGridButton(
-    BuildContext context, {
-    required Color iconColor,
+  Widget _buildGridButton({
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    bool enabled = true,
   }) {
+    final Color iconColor = enabled ? Colors.blue[900]! : Colors.black26;
+
     return GestureDetector(
-      onTap: onTap,
+      onTap: enabled ? onTap : null,
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -256,7 +247,7 @@ class _HomePageState extends State<HomePage> {
                   label,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.grey.shade800,
+                    color: enabled ? Colors.black87 : Colors.black38,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),

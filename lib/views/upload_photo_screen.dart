@@ -1,9 +1,10 @@
-import 'dart:io';
 import 'dart:typed_data';
+import 'package:dsas_app/viewmodels/register_student_card_view_model.dart';
 import 'package:dsas_app/views/view_status_screen.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
 
 class UploadPhotoScreen extends StatefulWidget {
   const UploadPhotoScreen({super.key});
@@ -15,10 +16,10 @@ class UploadPhotoScreen extends StatefulWidget {
 class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
   final _picker = ImagePicker();
 
-  XFile? _photo;
-  File? _proofPdf;
-  String? _proofPdfName;
-  bool _isLoading = false;
+  Uint8List? _photoBytes;
+  String _photoExt = 'jpg';
+  Uint8List? _proofBytes;
+  String? _proofName;
 
   static const Color _primaryBlue = Color(0xFF0D47A1);
 
@@ -58,8 +59,15 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
         maxWidth: 1280,
         preferredCameraDevice: CameraDevice.front,
       );
-      if (picked == null || !mounted) return;
-      setState(() => _photo = picked);
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _photoBytes = bytes;
+        _photoExt = picked.name.contains('.')
+            ? picked.name.split('.').last.toLowerCase()
+            : 'jpg';
+      });
     } catch (_) {
       if (!mounted) return;
       _showMessage('Could not open the camera or gallery.');
@@ -68,124 +76,98 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
 
   Future<void> _pickPdf() async {
     try {
-      final picked = await _picker.pickMedia();
+      final dynamic result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+      if (result == null) return;
 
-      if (picked != null) {
-        if (picked.name.toLowerCase().endsWith('.pdf')) {
-          setState(() {
-            _proofPdf = File(picked.path);
-            _proofPdfName = picked.name;
-          });
-        } else {
-          _showMessage('Please select a PDF file only.');
+      final dynamic file = result is List
+          ? (result.isEmpty ? null : result.first)
+          : (result.files.isEmpty ? null : result.files.first);
+      if (file == null) return;
+
+      Uint8List? bytes;
+      try {
+        bytes = file.bytes as Uint8List?;
+      } catch (_) {
+        bytes = null;
+      }
+      if (bytes == null) {
+        try {
+          bytes = await file.readAsBytes() as Uint8List;
+        } catch (_) {
+          bytes = null;
         }
       }
-    } catch (e) {
+
+      if (bytes == null) {
+        if (!mounted) return;
+        _showMessage('Could not read the selected file.');
+        return;
+      }
+
+      final String name = file.name as String;
+
       if (!mounted) return;
-      _showMessage('Error picking file: $e');
+      setState(() {
+        _proofBytes = bytes;
+        _proofName = name;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage('Could not select the file.');
     }
-  }
-
-  Future<String> _uploadFile(
-    String userId,
-    String name,
-    String extension,
-    List<int> bytes,
-  ) async {
-    final path = '$userId/$name.$extension';
-
-    String contentType = 'application/octet-stream';
-    if (extension == 'jpg' || extension == 'jpeg') contentType = 'image/jpeg';
-    if (extension == 'png') contentType = 'image/png';
-    if (extension == 'pdf') contentType = 'application/pdf';
-
-    await Supabase.instance.client.storage
-        .from('student-uploads')
-        .uploadBinary(
-          path,
-          Uint8List.fromList(bytes),
-          fileOptions: FileOptions(upsert: true, contentType: contentType),
-        );
-
-    return path;
   }
 
   Future<void> _submit() async {
-    if (_photo == null) {
+    if (_photoBytes == null) {
       _showMessage('Please add your photo.');
       return;
     }
-    if (_proofPdf == null) {
+    if (_proofBytes == null) {
       _showMessage('Please add your proof of registration (PDF).');
       return;
     }
 
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) {
-      _showMessage('You are not logged in. Please log in again.');
-      return;
-    }
+    final vm = context.read<RegisterStudentCardViewModel>();
+    final ok = await vm.submit(
+      photoBytes: _photoBytes!,
+      photoExtension: _photoExt,
+      proofBytes: _proofBytes!,
+    );
 
-    setState(() => _isLoading = true);
+    if (!mounted) return;
 
-    try {
-      final photoBytes = await _photo!.readAsBytes();
-      var photoExt = _photo!.name.contains('.')
-          ? _photo!.name.split('.').last.toLowerCase()
-          : 'jpg';
-      if (photoExt == 'jpeg') photoExt = 'jpg';
-      final photoPath = await _uploadFile(
-        user.id,
-        'photo',
-        photoExt,
-        photoBytes,
-      );
-
-      final proofBytes = await _proofPdf!.readAsBytes();
-      final proofPath = await _uploadFile(user.id, 'proof', 'pdf', proofBytes);
-
-      await Supabase.instance.client
-          .from('student_cards')
-          .update({
-            'photo_url': photoPath,
-            'proof_url': proofPath,
-            'status': 'pending',
-          })
-          .eq('user_id', user.id);
-
-      if (!mounted) return;
-      Navigator.push(
+    if (ok) {
+      Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (context) => const ViewStatusScreen()),
+        MaterialPageRoute(builder: (_) => const ViewStatusScreen()),
+        (route) => route.isFirst,
       );
-    } on StorageException catch (e) {
-      if (!mounted) return;
-      _showMessage('Upload failed: ${e.message}');
-    } on PostgrestException catch (e) {
-      if (!mounted) return;
-      _showMessage(e.message);
-    } catch (e) {
-      if (!mounted) return;
-      _showMessage('Something went wrong: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    } else {
+      _showMessage(vm.errorMessage ?? 'Submission failed.');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isSubmitting = context.select<RegisterStudentCardViewModel, bool>(
+      (vm) => vm.isSubmitting,
+    );
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
-          "Register",
-          style: TextStyle(color: Colors.black, fontSize: 18),
+          'Register',
+          style: TextStyle(color: Colors.white, fontSize: 18),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.blue[900],
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -200,7 +182,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
                   children: [
                     const Center(
                       child: Text(
-                        "Upload Photo",
+                        'Upload Photo',
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
@@ -209,20 +191,18 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Center(
+                    const Center(
                       child: Text(
-                        "Capture or upload a clear, front-facing photo for\nyour student card and proof of registration",
+                        'Capture or upload a clear, front-facing photo for\nyour student card and proof of registration',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                        style: TextStyle(color: Colors.black54, fontSize: 12),
                       ),
                     ),
                     const SizedBox(height: 32),
-
-                    _buildPhotoBox("+Take/upload photo", _photo, _pickPhoto),
-
+                    _buildPhotoBox(isSubmitting),
                     const SizedBox(height: 24),
                     const Text(
-                      "Proof of registration",
+                      'Proof of registration',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
@@ -230,8 +210,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
-                    _buildPdfBox(),
+                    _buildPdfBox(isSubmitting),
                   ],
                 ),
               ),
@@ -242,7 +221,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _submit,
+                  onPressed: isSubmitting ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primaryBlue,
                     foregroundColor: Colors.white,
@@ -251,7 +230,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
                       borderRadius: BorderRadius.circular(15),
                     ),
                   ),
-                  child: _isLoading
+                  child: isSubmitting
                       ? const SizedBox(
                           height: 22,
                           width: 22,
@@ -261,7 +240,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
                           ),
                         )
                       : const Text(
-                          "Submit registration",
+                          'Submit registration',
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 16,
@@ -276,22 +255,22 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
     );
   }
 
-  Widget _buildPhotoBox(String text, XFile? file, VoidCallback onTap) {
+  Widget _buildPhotoBox(bool disabled) {
     return GestureDetector(
-      onTap: _isLoading ? null : onTap,
+      onTap: disabled ? null : _pickPhoto,
       child: Container(
         height: 140,
         width: double.infinity,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: const Color(0xFF1F2029),
+          color: Colors.blue[900],
           borderRadius: BorderRadius.circular(10),
         ),
-        child: file == null
-            ? Center(
+        child: _photoBytes == null
+            ? const Center(
                 child: Text(
-                  text,
-                  style: const TextStyle(
+                  '+ Take/upload photo',
+                  style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w500,
                     fontSize: 13,
@@ -301,20 +280,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
             : Stack(
                 fit: StackFit.expand,
                 children: [
-                  FutureBuilder(
-                    future: file.readAsBytes(),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        );
-                      }
-                      return Image.memory(snapshot.data!, fit: BoxFit.cover);
-                    },
-                  ),
+                  Image.memory(_photoBytes!, fit: BoxFit.cover),
                   Positioned(
                     right: 8,
                     bottom: 8,
@@ -339,20 +305,20 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
     );
   }
 
-  Widget _buildPdfBox() {
+  Widget _buildPdfBox(bool disabled) {
     return GestureDetector(
-      onTap: _isLoading ? null : _pickPdf,
+      onTap: disabled ? null : _pickPdf,
       child: Container(
         height: 140,
         width: double.infinity,
         decoration: BoxDecoration(
-          color: const Color(0xFF1F2029),
+          color: Colors.blue[900],
           borderRadius: BorderRadius.circular(10),
         ),
-        child: _proofPdf == null
+        child: _proofBytes == null
             ? const Center(
                 child: Text(
-                  "+ Upload PDF Document",
+                  '+ Upload PDF Document',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w500,
@@ -363,12 +329,16 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.picture_as_pdf, color: Colors.red, size: 40),
+                  const Icon(
+                    Icons.picture_as_pdf,
+                    color: Colors.white,
+                    size: 40,
+                  ),
                   const SizedBox(height: 8),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Text(
-                      _proofPdfName ?? 'Document.pdf',
+                      _proofName ?? 'Document.pdf',
                       style: const TextStyle(color: Colors.white, fontSize: 12),
                       textAlign: TextAlign.center,
                       maxLines: 2,
@@ -378,7 +348,7 @@ class _UploadPhotoScreenState extends State<UploadPhotoScreen> {
                   const SizedBox(height: 8),
                   const Text(
                     'Tap to change',
-                    style: TextStyle(color: Colors.white54, fontSize: 11),
+                    style: TextStyle(color: Colors.white70, fontSize: 11),
                   ),
                 ],
               ),

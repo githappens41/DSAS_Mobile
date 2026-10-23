@@ -1,7 +1,8 @@
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:dsas_app/models/profile.dart';
+import 'package:dsas_app/viewmodels/profile_viewmodel.dart';
 import 'package:flutter/material.dart';
-import '../viewmodels/profile_viewmodel.dart';
+import 'package:provider/provider.dart';
 
 class ActiveCardScreen extends StatefulWidget {
   const ActiveCardScreen({super.key});
@@ -11,26 +12,23 @@ class ActiveCardScreen extends StatefulWidget {
 }
 
 class _ActiveCardScreenState extends State<ActiveCardScreen> {
-  final _vm = ProfileViewmodel();
-
   @override
   void initState() {
     super.initState();
-    _vm.loadProfile();
-  }
-
-  @override
-  void dispose() {
-    _vm.dispose();
-    super.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<ProfileViewmodel>().loadProfile();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Active Card",
-            style: TextStyle(color: Colors.white, fontSize: 18)),
+        title: const Text(
+          'Active Card',
+          style: TextStyle(color: Colors.white, fontSize: 18),
+        ),
         centerTitle: true,
         backgroundColor: Colors.blue[900],
         elevation: 0,
@@ -39,24 +37,35 @@ class _ActiveCardScreenState extends State<ActiveCardScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: ListenableBuilder(
-        listenable: _vm,
-        builder: (context, _) {
-          if (_vm.isLoading) {
-            return const Center(child: CircularProgressIndicator());
+      body: Consumer<ProfileViewmodel>(
+        builder: (context, vm, _) {
+          if (vm.isLoading && vm.profile == null) {
+            return Center(
+              child: CircularProgressIndicator(color: Colors.blue[900]),
+            );
           }
-          if (_vm.errorMessage != null || _vm.profile == null) {
+          if (vm.profile == null) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(_vm.errorMessage ?? 'No profile found.',
-                        textAlign: TextAlign.center),
+                    Text(
+                      vm.errorMessage ?? 'No profile found.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.black54),
+                    ),
                     const SizedBox(height: 12),
                     ElevatedButton(
-                      onPressed: _vm.loadProfile,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue[900],
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: vm.loadProfile,
                       child: const Text('Retry'),
                     ),
                   ],
@@ -64,7 +73,7 @@ class _ActiveCardScreenState extends State<ActiveCardScreen> {
               ),
             );
           }
-          return _buildCard(_vm.profile!);
+          return _buildCard(vm.profile!);
         },
       ),
     );
@@ -84,9 +93,10 @@ class _ActiveCardScreenState extends State<ActiveCardScreen> {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: const [
                   BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 10,
-                      offset: Offset(0, 4)),
+                    color: Colors.black26,
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
                 ],
                 gradient: const LinearGradient(
                   begin: Alignment.topCenter,
@@ -102,8 +112,11 @@ class _ActiveCardScreenState extends State<ActiveCardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Image.asset('assets/images/cut_emblem.jpeg',
-                          width: 150, fit: BoxFit.cover),
+                      Image.asset(
+                        'assets/images/cut_emblem.jpeg',
+                        width: 150,
+                        fit: BoxFit.cover,
+                      ),
                       Container(
                         width: 80,
                         height: 80,
@@ -134,39 +147,56 @@ class _ActiveCardScreenState extends State<ActiveCardScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(p.name,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 24,
-                                    color: Colors.black)),
+                            Text(
+                              p.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                                color: Colors.black,
+                              ),
+                            ),
                             const SizedBox(height: 1),
-                            Text(p.studentNumber,
-                                style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black)),
+                            Text(
+                              p.studentNumber,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
                             const SizedBox(height: 2),
-                            Text('Diploma in Information Technology',
-                                style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black)),
+                            Text(
+                              p.programme,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
                           ],
                         ),
-                        // Generated barcode (replaces barcode.jpeg)
                         Container(
-                          height: 70,
+                          height: 52,
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 4, vertical: 4),
+                            horizontal: 4,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: p.studentNumber.isEmpty
                               ? const Center(
-                                  child: Text('No student number',
-                                      style: TextStyle(color: Colors.black)))
+                                  child: Text(
+                                    'No student number',
+                                    style: TextStyle(color: Colors.black),
+                                  ),
+                                )
                               : BarcodeWidget(
                                   barcode: Barcode.code128(),
                                   data: p.studentNumber,

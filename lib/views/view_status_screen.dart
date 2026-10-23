@@ -1,7 +1,6 @@
+import 'package:dsas_app/viewmodels/register_student_card_view_model.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
-enum _StepState { done, current, waiting, rejected }
+import 'package:provider/provider.dart';
 
 class ViewStatusScreen extends StatefulWidget {
   const ViewStatusScreen({super.key});
@@ -11,36 +10,15 @@ class ViewStatusScreen extends StatefulWidget {
 }
 
 class _ViewStatusScreenState extends State<ViewStatusScreen> {
-  late Future<Map<String, dynamic>?> _future;
-
   static const Color _primaryBlue = Color(0xFF0D47A1);
   static const Color _textColor = Colors.black87;
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
-  }
-
-  Future<Map<String, dynamic>?> _load() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return null;
-
-    return await Supabase.instance.client
-        .from('student_cards')
-        .select('status, created_at, rejection_reason')
-        .eq('user_id', user.id)
-        .maybeSingle();
-  }
-
-  Future<void> _refresh() async {
-    final future = _load();
-    setState(() => _future = future);
-    try {
-      await future;
-    } catch (_) {
-      // The FutureBuilder shows the error state.
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<RegisterStudentCardViewModel>().loadStatus();
+    });
   }
 
   String _formatDate(String? iso) {
@@ -64,70 +42,91 @@ class _ViewStatusScreenState extends State<ViewStatusScreen> {
     return '${d.day} ${months[d.month - 1]} ${d.year}';
   }
 
-  List<Widget> _buildSteps(Map<String, dynamic> card) {
-    final status = (card['status'] as String?) ?? 'pending';
-    final submitted = _formatDate(card['created_at'] as String?);
-    final reason = card['rejection_reason'] as String?;
+  List<Widget> _buildSteps(RegisterStudentCardViewModel vm) {
+    final submitted = _formatDate(vm.submittedAt);
+    final reason = vm.rejectionReason?.trim() ?? '';
 
-    if (status == 'rejected') {
-      return [
-        _item('Submitted', submitted, _StepState.done),
-        _item('Under Review', 'Completed', _StepState.done),
-        _item(
-          'Rejected',
-          (reason != null && reason.trim().isNotEmpty)
-              ? reason
-              : 'Your registration was not approved',
-          _StepState.rejected,
-        ),
-        _item('Card collection', 'Not available', _StepState.waiting),
-      ];
+    final String approvedText;
+    if (vm.isApproved) {
+      approvedText = 'Your student card is approved';
+    } else if (vm.isRejected) {
+      approvedText = 'Not applicable';
+    } else {
+      approvedText = 'Pending decision';
     }
 
-    final int done;
-    final int current;
-    switch (status) {
-      case 'approved':
-        done = 3;
-        current = -1;
-        break;
-      case 'ready_for_collection':
-        done = 3;
-        current = 3;
-        break;
-      case 'collected':
-        done = 4;
-        current = -1;
-        break;
-      default:
-        done = 1;
-        current = 1;
-    }
-
-    _StepState stateOf(int i) {
-      if (i < done) return _StepState.done;
-      if (i == current) return _StepState.current;
-      return _StepState.waiting;
+    final String rejectedText;
+    if (vm.isRejected) {
+      rejectedText = reason.isNotEmpty
+          ? reason
+          : 'Your registration was not approved';
+    } else if (vm.isApproved) {
+      rejectedText = 'Not applicable';
+    } else {
+      rejectedText = 'Pending decision';
     }
 
     return [
-      _item('Submitted', submitted, stateOf(0)),
+      _item(
+        'Submitted',
+        submitted.isEmpty ? 'Submitted' : submitted,
+        Colors.grey,
+        true,
+      ),
       _item(
         'Under Review',
-        stateOf(1) == _StepState.done ? 'Completed' : 'Pending',
-        stateOf(1),
+        vm.isPending ? 'Pending' : 'Completed',
+        Colors.amber[700]!,
+        true,
       ),
-      _item(
-        'Approved',
-        stateOf(2) == _StepState.done ? 'Approved' : 'Waiting',
-        stateOf(2),
-      ),
-      _item('Card collection', switch (stateOf(3)) {
-        _StepState.done => 'Collected',
-        _StepState.current => 'Ready for collection',
-        _ => 'Waiting',
-      }, stateOf(3)),
+      _item('Approved', approvedText, Colors.green, vm.isApproved),
+      _item('Rejected', rejectedText, Colors.red, vm.isRejected),
     ];
+  }
+
+  Widget _buildBody(RegisterStudentCardViewModel vm) {
+    if (vm.isLoading && !vm.hasLoaded) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          SizedBox(height: 120),
+          Center(child: CircularProgressIndicator(color: _primaryBlue)),
+        ],
+      );
+    }
+
+    if (!vm.hasLoaded) {
+      return _message('Could not load your status.\nPull down to try again.');
+    }
+
+    if (!vm.hasCard) {
+      return _message(
+        'No registration found.\nGo back and register your student card.',
+      );
+    }
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(20.0),
+      children: [
+        const SizedBox(height: 16),
+        const Text(
+          'Your Application',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: _textColor,
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Track the progress of your student card registration.',
+          style: TextStyle(color: Colors.black54, fontSize: 14),
+        ),
+        const SizedBox(height: 32),
+        ..._buildSteps(vm),
+      ],
+    );
   }
 
   @override
@@ -136,7 +135,7 @@ class _ViewStatusScreenState extends State<ViewStatusScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
-          "Registration Status",
+          'Registration Status',
           style: TextStyle(color: Colors.white, fontSize: 18),
         ),
         centerTitle: true,
@@ -148,61 +147,14 @@ class _ViewStatusScreenState extends State<ViewStatusScreen> {
         ),
       ),
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _refresh,
-          color: _primaryBlue,
-          child: FutureBuilder<Map<String, dynamic>?>(
-            future: _future,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: const [
-                    SizedBox(height: 120),
-                    Center(
-                      child: CircularProgressIndicator(color: _primaryBlue),
-                    ),
-                  ],
-                );
-              }
-
-              if (snapshot.hasError) {
-                return _message(
-                  'Could not load your status.\nPull down to try again.',
-                );
-              }
-
-              final card = snapshot.data;
-              if (card == null) {
-                return _message(
-                  'No registration found.\nGo back and register your student card.',
-                );
-              }
-
-              return ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(20.0),
-                children: [
-                  const SizedBox(height: 16),
-                  const Text(
-                    "Your Application",
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: _textColor,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Track the progress of your student card registration.",
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-                  ),
-                  const SizedBox(height: 32),
-                  ..._buildSteps(card),
-                ],
-              );
-            },
-          ),
+        child: Consumer<RegisterStudentCardViewModel>(
+          builder: (context, vm, _) {
+            return RefreshIndicator(
+              onRefresh: vm.loadStatus,
+              color: _primaryBlue,
+              child: _buildBody(vm),
+            );
+          },
         ),
       ),
     );
@@ -217,8 +169,8 @@ class _ViewStatusScreenState extends State<ViewStatusScreen> {
         Text(
           text,
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.grey.shade600,
+          style: const TextStyle(
+            color: Colors.black54,
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
@@ -227,25 +179,7 @@ class _ViewStatusScreenState extends State<ViewStatusScreen> {
     );
   }
 
-  Widget _item(String title, String sub, _StepState state) {
-    final Color color;
-    switch (state) {
-      case _StepState.done:
-        color = Colors.green;
-        break;
-      case _StepState.current:
-        color = _primaryBlue;
-        break;
-      case _StepState.rejected:
-        color = Colors.red;
-        break;
-      case _StepState.waiting:
-        color = Colors.grey;
-        break;
-    }
-
-    final active = state != _StepState.waiting;
-
+  Widget _item(String title, String sub, Color color, bool active) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 24.0),
       child: Row(

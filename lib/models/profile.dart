@@ -3,6 +3,7 @@ class Profile {
   final String name;
   final String email;
   final String studentNumber;
+  final String programme;
   final String imageUrl;
   final String userId;
 
@@ -13,6 +14,7 @@ class Profile {
     required this.studentNumber,
     required this.imageUrl,
     required this.userId,
+    this.programme = '',
   });
 
   Profile copyWith({
@@ -27,6 +29,7 @@ class Profile {
       name: name ?? this.name,
       email: email ?? this.email,
       studentNumber: studentNumber ?? this.studentNumber,
+      programme: programme ?? this.programme,
       imageUrl: imageUrl ?? this.imageUrl,
       userId: userId,
     );
@@ -38,6 +41,7 @@ class Profile {
       name: json['name'] as String? ?? '',
       email: json['email'] as String? ?? '',
       studentNumber: json['student_number'] as String? ?? '',
+      programme: json['programme'] as String? ?? '',
       imageUrl: json['image_url'] as String? ?? '',
       userId: json['user_id']?.toString() ?? '',
     );
@@ -48,6 +52,7 @@ class Profile {
     'name': name,
     'email': email,
     'student_number': studentNumber,
+    'programme': programme,
     'image_url': imageUrl,
     'user_id': userId,
   };

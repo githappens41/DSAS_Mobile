@@ -1,4 +1,5 @@
 import 'package:dsas_app/viewmodels/profile_viewmodel.dart';
+import 'package:dsas_app/viewmodels/register_student_card_view_model.dart';
 import 'package:dsas_app/views/auth_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -24,7 +25,10 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => ProfileViewmodel())],
+      providers: [
+  ChangeNotifierProvider(create: (_) => ProfileViewmodel()),
+  ChangeNotifierProvider(create: (_) => RegisterStudentCardViewModel()),
+],
       builder: (context, child) {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
