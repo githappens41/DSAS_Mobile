@@ -95,49 +95,74 @@ class ProfileViewmodel extends ChangeNotifier {
       notifyListeners();
     }
   }
-
-  Future<bool> updateProfile({
-    required String name,
-    required String email,
-    required String studentNumber,
-    required String imageUrl,
-  }) async {
-    final user = _client.auth.currentUser;
-    if (user == null) {
-      _errorMessage = 'You must be signed in to update your profile.';
-      notifyListeners();
-      return false;
-    }
-
-    _setLoading(true);
-    _errorMessage = null;
-    try {
-      final row = await _client
-          .from('profiles')
-          .update({
-            'name': name.trim(),
-            'email': email.trim(),
-            'student_number': studentNumber.trim(),
-            'image_url': imageUrl.trim(),
-          })
-          .eq('user_id', user.id)
-          .select()
-          .single();
-
-      _profile = Profile.fromJson(row);
-      return true;
-    } on PostgrestException catch (e) {
-      _errorMessage = e.message;
-      return false;
-    } catch (_) {
-      _errorMessage = 'Unable to update your profile.';
-      return false;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+Future<bool> updateProfile({
+  required String name,
+  required String email,
+  required String studentNumber,
+  required String imageUrl,
+  Uint8List? imageBytes,
+  String imageExtension = 'jpg',
+}) async {
+  final user = _client.auth.currentUser;
+  if (user == null) {
+    _errorMessage = 'You must be signed in to update your profile.';
+    notifyListeners();
+    return false;
   }
 
+  _setLoading(true);
+  _errorMessage = null;
+  try {
+    var finalImageUrl = imageUrl.trim();
+
+    // A new photo was picked: upload it first, then use its URL.
+    if (imageBytes != null) {
+      final ext = imageExtension.toLowerCase().replaceAll('.', '');
+      final path = '${user.id}/avatar.$ext';
+
+      await _client.storage.from('profile-images').uploadBinary(
+            path,
+            imageBytes,
+            fileOptions: FileOptions(
+              upsert: true,
+              contentType: ext == 'png' ? 'image/png' : 'image/jpeg',
+            ),
+          );
+
+      final publicUrl =
+          _client.storage.from('profile-images').getPublicUrl(path);
+      // Same path every time, so add a version to bypass image caching.
+      finalImageUrl = '$publicUrl?v=${DateTime.now().millisecondsSinceEpoch}';
+    }
+
+    final row = await _client
+        .from('profiles')
+        .update({
+          'name': name.trim(),
+          'email': email.trim(),
+          'student_number': studentNumber.trim(),
+          'image_url': finalImageUrl,
+        })
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+    _profile = Profile.fromJson(row);
+    return true;
+  } on StorageException catch (e) {
+    _errorMessage = e.message;
+    return false;
+  } on PostgrestException catch (e) {
+    _errorMessage = e.message;
+    return false;
+  } catch (_) {
+    _errorMessage = 'Unable to update your profile.';
+    return false;
+  } finally {
+    _isLoading = false;
+    notifyListeners();
+  }
+}
   void clearProfile() {
     _profile = null;
     _errorMessage = null;

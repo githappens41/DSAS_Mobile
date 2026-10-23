@@ -19,6 +19,7 @@ class Profile {
     String? name,
     String? email,
     String? studentNumber,
+    String? programme,
     String? imageUrl,
   }) {
     return Profile(
