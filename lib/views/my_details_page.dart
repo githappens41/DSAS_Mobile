@@ -1,3 +1,4 @@
+import 'package:dsas_app/views/help_support_screen.dart';
 import 'package:dsas_app/views/update_profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -27,7 +28,13 @@ class MyDetailsPage extends StatelessWidget {
         ),
         centerTitle: true,
         actions: [
-          Padding(
+          IconButton(onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const HelpSupportScreen(),
+              ),
+            );
+          }, icon: Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: CircleAvatar(
               backgroundColor: const Color(0xFF8B0000),
@@ -40,7 +47,8 @@ class MyDetailsPage extends StatelessWidget {
                 ),
               ),
             ),
-          ),
+          ),)
+          
         ],
       ),
       body: Consumer<ProfileViewmodel>(

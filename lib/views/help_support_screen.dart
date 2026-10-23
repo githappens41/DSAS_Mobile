@@ -135,6 +135,7 @@ class HelpSupportScreen extends StatelessWidget {
           'Help & Support',
           style: TextStyle(color: Colors.white, fontSize: 18),
         ),
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
         child: Column(
