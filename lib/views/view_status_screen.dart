@@ -137,13 +137,13 @@ class _ViewStatusScreenState extends State<ViewStatusScreen> {
       appBar: AppBar(
         title: const Text(
           "Registration Status",
-          style: TextStyle(color: Colors.black, fontSize: 18),
+          style: TextStyle(color: Colors.white, fontSize: 18),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.blue[900],
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
       ),

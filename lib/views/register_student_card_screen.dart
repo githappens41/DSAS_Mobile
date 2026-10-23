@@ -105,17 +105,16 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
     );
 
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.blue[900],  
         title: const Text(
           "Register",
-          style: TextStyle(color: Colors.black, fontSize: 18),
+          style: TextStyle(color: Colors.white, fontSize: 18),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -130,17 +129,6 @@ class _RegisterStudentCardScreenState extends State<RegisterStudentCardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Center(
-                        child: Text(
-                          "Register Student\nCard",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: _textColor,
-                          ),
-                        ),
-                      ),
                       const SizedBox(height: 24),
                       Text(
                         "Personal Information",
